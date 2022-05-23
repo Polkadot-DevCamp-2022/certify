@@ -18,8 +18,12 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	#[pallet::getter(fn some_map2)]
-	pub(super) type CertificateMap<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, T::AccountId>;
+	#[pallet::getter(fn certificate_revocation)]
+	pub(super) type CertificateRevocationStatusMap<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, bool>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn certificate_issuer)]
+	pub(super) type CertificateIssuerMap<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, T::AccountId>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -47,11 +51,13 @@ pub mod pallet {
 			let user = ensure_signed(origin)?;
 
 			ensure!(
-				!<CertificateMap<T>>::contains_key(&certificate_id),
+				!(<CertificateIssuerMap<T>>::contains_key(&certificate_id) || <CertificateRevocationStatusMap<T>>::contains_key(&user)),
 				Error::<T>::AlreadyExists
 			);
 
-			<CertificateMap<T>>::insert(certificate_id, &user);
+			<CertificateIssuerMap<T>>::insert(certificate_id, &user);
+
+			<CertificateRevocationStatusMap<T>>::insert(&user, false);
 
 			Self::deposit_event(Event::Issued(user, certificate_id));
 
@@ -65,14 +71,14 @@ pub mod pallet {
 			let user = ensure_signed(origin)?;
 
 			ensure!(
-				<CertificateMap<T>>::contains_key(&certificate_id),
+				<CertificateIssuerMap<T>>::contains_key(&certificate_id) && <CertificateRevocationStatusMap<T>>::contains_key(&user),
 				Error::<T>::DoesNotExist
 			);
 
-			let owner = <CertificateMap<T>>::get(&certificate_id).ok_or(Error::<T>::NoOwner)?;
+			let owner = <CertificateIssuerMap<T>>::get(&certificate_id).ok_or(Error::<T>::NoOwner)?;
 			ensure!(user == owner, <Error<T>>::IncorrectOwner);
 
-			<CertificateMap<T>>::take(&certificate_id);
+			<CertificateRevocationStatusMap<T>>::insert(&user, true);
 			Self::deposit_event(Event::Revoked(user, certificate_id));
 			Ok(().into())
 		}
