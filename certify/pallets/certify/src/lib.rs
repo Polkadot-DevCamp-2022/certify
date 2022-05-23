@@ -32,7 +32,9 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		NoOwner,
-		WrongOwner,
+		IncorrectOwner,
+		AlreadyExists,
+		DoesNotExist,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -43,6 +45,11 @@ pub mod pallet {
 		pub fn issue(origin: OriginFor<T>, certificate_id: T::Hash) -> DispatchResultWithPostInfo {
 			// A user can only set their own entry
 			let user = ensure_signed(origin)?;
+
+			ensure!(
+				!<CertificateMap<T>>::contains_key(&certificate_id),
+				Error::<T>::AlreadyExists
+			);
 
 			<CertificateMap<T>>::insert(certificate_id, &user);
 
@@ -57,13 +64,13 @@ pub mod pallet {
 			// A user can only take (delete) their own entry
 			let user = ensure_signed(origin)?;
 
-			// ensure!(
-			// 	<CertificateMap<T>>::contains_key(&certificate_id),
-			// 	Error::<T>::NoValueStored
-			// );
+			ensure!(
+				<CertificateMap<T>>::contains_key(&certificate_id),
+				Error::<T>::DoesNotExist
+			);
 
 			let owner = <CertificateMap<T>>::get(&certificate_id).ok_or(Error::<T>::NoOwner)?;
-			ensure!(user == owner, <Error<T>>::WrongOwner);
+			ensure!(user == owner, <Error<T>>::IncorrectOwner);
 
 			<CertificateMap<T>>::take(&certificate_id);
 			Self::deposit_event(Event::Revoked(user, certificate_id));
