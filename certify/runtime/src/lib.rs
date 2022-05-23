@@ -336,7 +336,7 @@ impl pallet_contracts::Config for Runtime {
 	type DepositPerByte = DepositPerByte;
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = ();
+	type ChainExtension = CertifyExtension;
 	type DeletionQueueDepth = DeletionQueueDepth;
 	type DeletionWeightLimit = DeletionWeightLimit;
 	type Schedule = Schedule;
@@ -633,4 +633,75 @@ impl_runtime_apis! {
 		}
 	}
 
+}
+
+// Certify Extension Chain-Side Integration
+use frame_support::log::{
+    error,
+};
+use frame_system::RawOrigin;
+use pallet_contracts::chain_extension::{
+    ChainExtension,
+    Environment,
+    Ext,
+    InitState,
+    RetVal,
+    SysConfig,
+    UncheckedFrom,
+};
+use sp_runtime::DispatchError;
+
+pub struct CertifyExtension;
+
+impl ChainExtension<Runtime> for CertifyExtension {
+    fn call<E: Ext>(
+        func_id: u32,
+        env: Environment<E, InitState>,
+    ) -> Result<RetVal, DispatchError>
+    where
+        <E::T as SysConfig>::AccountId:
+            UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
+		Origin: From<RawOrigin<<<E as Ext>::T as SysConfig>::AccountId>>
+    {
+
+        match func_id {
+			1 => {
+				// TODO: Read on env.write
+
+				let mut env = env.buf_in_buf_out();
+
+				// retrieve argument that was passed from smart contract
+				let value: Hash = env.read_as()?;
+
+				// TODO:: deal with weight
+
+				let caller = env.ext().address().clone();
+				crate::pallet_certify::Pallet::<Runtime>::issue(RawOrigin::Signed(caller).into(), value).map_err(|d| d.error)?;
+
+
+			},
+			2 => {
+				let mut env = env.buf_in_buf_out();
+
+				// retrieve argument that was passed from smart contract
+				let value: Hash = env.read_as()?;
+
+				// TODO:: deal with weight
+
+				let contract = env.ext().address().clone();
+				crate::pallet_certify::Pallet::<Runtime>::revoke(RawOrigin::Signed(contract).into(), value).map_err(|d| d.error)?;
+
+			},
+            _ => {
+                error!("Called an unregistered `func_id`: {:}", func_id);
+                return Err(DispatchError::Other("Unimplemented func_id"))
+            }
+        }
+
+		Ok(RetVal::Converging(0))
+    }
+
+    fn enabled() -> bool {
+        true
+    }
 }

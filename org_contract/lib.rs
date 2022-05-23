@@ -1,74 +1,135 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use ink_env::{Hash, Environment};
 use ink_lang as ink;
 
-#[ink::contract]
-mod org_contract {
+#[ink::chain_extension]
+pub trait CertifyExtension {
+    type ErrorCode = ContractError;
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
+    #[ink(extension = 1)]
+	fn issue_in_runtime(key: Hash) -> Result<Hash, ContractError>;
+
+    #[ink(extension = 2)]
+	fn revoke_in_runtime(key: Hash) -> Result<Hash, ContractError>;
+
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum ContractError {
+    UnknownStatusCode,
+    InvalidScaleEncoding,
+}
+
+impl From<scale::Error> for ContractError {
+	fn from(_: scale::Error) -> Self {
+		ContractError::InvalidScaleEncoding
+	}
+}
+
+impl ink_env::chain_extension::FromStatusCode for ContractError {
+    fn from_status_code(status_code: u32) -> Result<(), Self> {
+        match status_code {
+			0 => Ok(()),
+			_ => Err(Self::UnknownStatusCode),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum CustomEnvironment {}
+
+impl Environment for CustomEnvironment {
+    const MAX_EVENT_TOPICS: usize =
+        <ink_env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
+
+    type AccountId = <ink_env::DefaultEnvironment as Environment>::AccountId;
+    type Balance = <ink_env::DefaultEnvironment as Environment>::Balance;
+    type Hash = <ink_env::DefaultEnvironment as Environment>::Hash;
+    type BlockNumber = <ink_env::DefaultEnvironment as Environment>::BlockNumber;
+    type Timestamp = <ink_env::DefaultEnvironment as Environment>::Timestamp;
+
+    type ChainExtension = CertifyExtension;
+}
+
+#[ink::contract(env = crate::CustomEnvironment)]
+mod org_contract {
+    use super::ContractError;
+
     #[ink(storage)]
     pub struct OrgContract {
-        /// Stores a single `bool` value on the storage.
-        value: bool,
+        name: Hash,
+    }
+
+    #[ink(event)]
+    pub struct IssuedByContract {
+        #[ink(topic)]
+        value: Hash,
+        #[ink(topic)]
+        account_id:AccountId
+    }
+
+    #[ink(event)]
+    pub struct RevokedByContract {
+        #[ink(topic)]
+        value: Hash,
+        #[ink(topic)]
+        account_id:AccountId
+    }
+
+    #[ink(event)]
+    pub struct NameChanged {
+        #[ink(topic)]
+        name: Hash,
     }
 
     impl OrgContract {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+        pub fn new(name: Hash) -> Self {
+            Self { name: name }
         }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
         #[ink(constructor)]
         pub fn default() -> Self {
             Self::new(Default::default())
         }
 
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
+        pub fn get(&self) -> Hash {
+            self.name
         }
 
-        /// Simply returns the current value of our `bool`.
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
+        pub fn set(&mut self, value: Hash) -> Result<(), ContractError> {
+            self.name = value;
+            self.env().emit_event(NameChanged { name: value });
+
+            Ok(())
         }
+
+		#[ink(message)]
+		pub fn issue(&mut self, value: Hash) -> Result<(), ContractError> {
+            let caller = self.env().caller();
+
+			self.env().extension().issue_in_runtime(value)?;
+            self.env().emit_event(IssuedByContract { value: value, account_id: caller });
+
+			Ok(())
+		}
+
+        #[ink(message)]
+		pub fn revoke(&mut self, value: Hash) -> Result<(), ContractError> {
+            let caller = self.env().caller();
+
+			self.env().extension().revoke_in_runtime(value)?;
+            self.env().emit_event(RevokedByContract { value: value, account_id: caller });
+
+			Ok(())
+		}
+        
+
     }
 
-    /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    /// module and test functions are marked with a `#[test]` attribute.
-    /// The below code is technically just normal Rust code.
-    #[cfg(test)]
-    mod tests {
-        /// Imports all the definitions from the outer scope so we can use them here.
-        use super::*;
-
-        /// Imports `ink_lang` so we can use `#[ink::test]`.
-        use ink_lang as ink;
-
-        /// We test if the default constructor does its job.
-        #[ink::test]
-        fn default_works() {
-            let org_contract = OrgContract::default();
-            assert_eq!(org_contract.get(), false);
-        }
-
-        /// We test a simple use case of our contract.
-        #[ink::test]
-        fn it_works() {
-            let mut org_contract = OrgContract::new(false);
-            assert_eq!(org_contract.get(), false);
-            org_contract.flip();
-            assert_eq!(org_contract.get(), true);
-        }
-    }
 }
