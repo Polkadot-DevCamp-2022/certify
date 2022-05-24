@@ -20,6 +20,7 @@ import Interactor from './Interactor'
 import Metadata from './Metadata'
 import NodeInfo from './NodeInfo'
 import TemplateModule from './TemplateModule'
+import Certify from './Certify'
 import Transfer from './Transfer'
 import Upgrade from './Upgrade'
 
@@ -83,6 +84,9 @@ function Main() {
           </Grid.Row>
           <Grid.Row>
             <TemplateModule />
+          </Grid.Row>
+          <Grid.Row>
+            <Certify />
           </Grid.Row>
         </Grid>
       </Container>
