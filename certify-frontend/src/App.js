@@ -20,10 +20,11 @@ import Interactor from './Interactor'
 import Metadata from './Metadata'
 import NodeInfo from './NodeInfo'
 import TemplateModule from './TemplateModule'
-import Certify from './Certify'
+import Issue from './Issue'
 import Transfer from './Transfer'
 import Upgrade from './Upgrade'
 import Contract from './Contract'
+import Verify from './Verify'
 
 function Main() {
   const { apiState, apiError, keyringState } = useSubstrateState()
@@ -87,7 +88,8 @@ function Main() {
             <TemplateModule />
           </Grid.Row>
           <Grid.Row>
-            <Certify />
+            <Issue />
+            <Verify />
           </Grid.Row>
           <Grid.Row>
             <Contract />

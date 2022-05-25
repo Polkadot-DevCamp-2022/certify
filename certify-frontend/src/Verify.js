@@ -8,12 +8,11 @@ import { TxButton } from './substrate-lib/components'
 import { blake2AsHex } from '@polkadot/util-crypto'
 
 function Main(props) {
-  const { api } = useSubstrateState()
-
   // The transaction submission status
   const [status, setStatus] = useState('')
 
   const [fileHash, setFileHash] = useState('')
+  const [issuer, setIssuer] = useState('')
 
   const handleFileChange = event => {
     const fileReader = new FileReader()
@@ -23,10 +22,28 @@ function Main(props) {
     }
   }
 
+  let result = ''
+  if (status === '' || fileHash === '') {
+    result = ''
+  } else if (status !== 'None' && status === issuer) {
+    result = 'Verified'
+  } else {
+    result = 'Not Verified'
+  }
+
   return (
     <Grid.Column width={8}>
-      <h1>Certify Module</h1>
+      <h1>Verify</h1>
       <Form>
+        <Form.Field>
+          <Input
+            value={issuer}
+            label="Issuer Account ID"
+            placeholder="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+            type="text"
+            onChange={(_, { value }) => setIssuer(value)}
+          />
+        </Form.Field>
         <Form.Field>
           <Input
             label="Certificate File"
@@ -46,30 +63,7 @@ function Main(props) {
         </Form.Field>
         <Form.Field style={{ textAlign: 'center' }}>
           <TxButton
-            label="Revoke"
-            type="SIGNED-TX"
-            color="red"
-            setStatus={setStatus}
-            attrs={{
-              palletRpc: 'certify',
-              callable: 'revoke',
-              inputParams: [fileHash],
-              paramFields: [true],
-            }}
-          />
-          <TxButton
-            label="Issue"
-            type="SIGNED-TX"
-            setStatus={setStatus}
-            attrs={{
-              palletRpc: 'certify',
-              callable: 'issue',
-              inputParams: [fileHash],
-              paramFields: [true],
-            }}
-          />
-          <TxButton
-            label="Get Issuer"
+            label="Verify"
             type="QUERY"
             color="green"
             setStatus={setStatus}
@@ -81,13 +75,13 @@ function Main(props) {
             }}
           ></TxButton>
         </Form.Field>
-        <div style={{ overflowWrap: 'break-word' }}>{status}</div>
+        <div style={{ overflowWrap: 'break-word' }}>{result}</div>
       </Form>
     </Grid.Column>
   )
 }
 
-export default function Certify(props) {
+export default function Verify(props) {
   const { api } = useSubstrateState()
   return api.tx.certify ? <Main {...props} /> : null
 }

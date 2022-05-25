@@ -64,7 +64,7 @@ function Main(props) {
 
   return (
     <Grid.Column width={8}>
-      <h1>Contract Module</h1>
+      <h1>Organization Contract</h1>
       <p>{config.CONTRACT_ADDR}</p>
       <Form>
         <Form.Field>
