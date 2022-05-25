@@ -13,7 +13,7 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 	}
 
-	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default)]
+	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
 	pub struct Certificate<AccountId> {
 		issuer: AccountId,
 		is_revoked: bool,
@@ -23,9 +23,14 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+
+
+	// type Certificate<T> = Certificate<<T as frame_system::Config>::AccountId>;
+
 	#[pallet::storage]
 	#[pallet::getter(fn certificate_struct)]
     pub(super) type CertificateMap<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, Certificate<T::AccountId>>;
+
 
 	#[pallet::storage]
 	#[pallet::getter(fn certificate_revocation)]
