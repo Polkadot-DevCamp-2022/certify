@@ -23,6 +23,7 @@ import TemplateModule from './TemplateModule'
 import Certify from './Certify'
 import Transfer from './Transfer'
 import Upgrade from './Upgrade'
+import Contract from './Contract'
 
 function Main() {
   const { apiState, apiError, keyringState } = useSubstrateState()
@@ -87,6 +88,9 @@ function Main() {
           </Grid.Row>
           <Grid.Row>
             <Certify />
+          </Grid.Row>
+          <Grid.Row>
+            <Contract />
           </Grid.Row>
         </Grid>
       </Container>

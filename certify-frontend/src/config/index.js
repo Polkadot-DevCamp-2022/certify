@@ -1,4 +1,5 @@
 import configCommon from './common.json'
+import abi from './abi.json'
 // Using `require` as `import` does not support dynamic loading (yet).
 const configEnv = require(`./${process.env.NODE_ENV}.json`)
 
@@ -10,5 +11,5 @@ const envVars = envVarNames.reduce((mem, n) => {
   return mem
 }, {})
 
-const config = { ...configCommon, ...configEnv, ...envVars }
+const config = { ...configCommon, ...configEnv, ...envVars, abi }
 export default config

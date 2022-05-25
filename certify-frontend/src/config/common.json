@@ -1,4 +1,5 @@
 {
   "APP_NAME": "substrate-front-end-template",
-  "CUSTOM_RPC_METHODS": {}
+  "CUSTOM_RPC_METHODS": {},
+  "CONTRACT_ADDR": "5HRKgNpoK2YGfV3a2kcCSxKkv4GzEPL5tmcHfbAZs12XYjNR"
 }
