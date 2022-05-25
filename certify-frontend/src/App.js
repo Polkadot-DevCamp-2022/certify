@@ -13,15 +13,18 @@ import { SubstrateContextProvider, useSubstrateState } from './substrate-lib'
 import { DeveloperConsole } from './substrate-lib/components'
 
 import AccountSelector from './AccountSelector'
-import Balances from './Balances'
+// import Balances from './Balances'
 import BlockNumber from './BlockNumber'
 import Events from './Events'
-import Interactor from './Interactor'
+// import Interactor from './Interactor'
 import Metadata from './Metadata'
 import NodeInfo from './NodeInfo'
-import TemplateModule from './TemplateModule'
-import Transfer from './Transfer'
-import Upgrade from './Upgrade'
+// import TemplateModule from './TemplateModule'
+import Issue from './Issue'
+// import Transfer from './Transfer'
+// import Upgrade from './Upgrade'
+import Contract from './Contract'
+import Verify from './Verify'
 
 function Main() {
   const { apiState, apiError, keyringState } = useSubstrateState()
@@ -70,19 +73,29 @@ function Main() {
             <BlockNumber />
             <BlockNumber finalized />
           </Grid.Row>
-          <Grid.Row stretched>
+          {/* <Grid.Row stretched>
             <Balances />
-          </Grid.Row>
-          <Grid.Row>
+          </Grid.Row> */}
+          {/* <Grid.Row>
             <Transfer />
             <Upgrade />
-          </Grid.Row>
-          <Grid.Row>
+          </Grid.Row> */}
+          {/* <Grid.Row>
             <Interactor />
             <Events />
+          </Grid.Row> */}
+          {/* <Grid.Row>
+            <TemplateModule />
+          </Grid.Row> */}
+          <Grid.Row>
+            <Issue />
+            <Verify />
           </Grid.Row>
           <Grid.Row>
-            <TemplateModule />
+            <Contract />
+          </Grid.Row>
+          <Grid.Row>
+            <Events />
           </Grid.Row>
         </Grid>
       </Container>
