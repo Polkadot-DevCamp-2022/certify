@@ -5,26 +5,41 @@ import { Form, Input, Grid } from 'semantic-ui-react'
 
 import { useSubstrateState } from './substrate-lib'
 import { TxButton } from './substrate-lib/components'
+import { blake2AsHex } from '@polkadot/util-crypto'
 
 function Main(props) {
-  const { api } = useSubstrateState()
-
   // The transaction submission status
   const [status, setStatus] = useState('')
 
-  const [formValue, setFormValue] = useState(0)
+  const [fileHash, setFileHash] = useState('')
+
+  const handleFileChange = event => {
+    const fileReader = new FileReader()
+    fileReader.readAsArrayBuffer(event.target.files[0])
+    fileReader.onload = e => {
+      setFileHash(blake2AsHex(new Uint8Array(e.target.result)))
+    }
+  }
 
   return (
     <Grid.Column width={8}>
-      <h1>Certify Module</h1>
+      <h1>Issue</h1>
       <Form>
         <Form.Field>
           <Input
+            label="Certificate File"
+            type="file"
+            onChange={handleFileChange}
+          />
+        </Form.Field>
+        <Form.Field>
+          <Input
+            value={fileHash}
             label="Certificate Hash"
             placeholder="0x0000... 256 bits"
             state="hashValue"
             type="text"
-            onChange={(_, { value }) => setFormValue(value)}
+            onChange={(_, { value }) => setFileHash(value)}
           />
         </Form.Field>
         <Form.Field style={{ textAlign: 'center' }}>
@@ -36,7 +51,7 @@ function Main(props) {
             attrs={{
               palletRpc: 'certify',
               callable: 'revoke',
-              inputParams: [formValue],
+              inputParams: [fileHash],
               paramFields: [true],
             }}
           />
@@ -47,7 +62,7 @@ function Main(props) {
             attrs={{
               palletRpc: 'certify',
               callable: 'issue',
-              inputParams: [formValue],
+              inputParams: [fileHash],
               paramFields: [true],
             }}
           />
@@ -59,7 +74,7 @@ function Main(props) {
             attrs={{
               palletRpc: 'certify',
               callable: 'certificateMap',
-              inputParams: [formValue],
+              inputParams: [fileHash],
               paramFields: [true],
             }}
           ></TxButton>
@@ -70,7 +85,7 @@ function Main(props) {
   )
 }
 
-export default function Certify(props) {
+export default function Issue(props) {
   const { api } = useSubstrateState()
   return api.tx.certify ? <Main {...props} /> : null
 }
