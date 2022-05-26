@@ -13,13 +13,32 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 	}
 
+	#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, MaxEncodedLen, TypeInfo)]
+	pub struct Certificate<AccountId> {
+		issuer: AccountId,
+		is_revoked: bool,
+	}
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+
+
+	// type Certificate<T> = Certificate<<T as frame_system::Config>::AccountId>;
+
 	#[pallet::storage]
-	#[pallet::getter(fn some_map2)]
-	pub(super) type CertificateMap<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, T::AccountId>;
+	#[pallet::getter(fn certificate_struct)]
+    pub(super) type CertificateMap<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, Certificate<T::AccountId>>;
+
+
+	#[pallet::storage]
+	#[pallet::getter(fn certificate_revocation)]
+	pub(super) type CertificateRevocationStatusMap<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, bool>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn certificate_issuer)]
+	pub(super) type CertificateIssuerMap<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, T::AccountId>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -32,7 +51,9 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		NoOwner,
-		WrongOwner,
+		IncorrectOwner,
+		AlreadyExists,
+		DoesNotExist,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -44,7 +65,14 @@ pub mod pallet {
 			// A user can only set their own entry
 			let user = ensure_signed(origin)?;
 
-			<CertificateMap<T>>::insert(certificate_id, &user);
+			ensure!(
+				!(<CertificateIssuerMap<T>>::contains_key(&certificate_id) || <CertificateRevocationStatusMap<T>>::contains_key(&certificate_id)),
+				Error::<T>::AlreadyExists
+			);
+
+			<CertificateIssuerMap<T>>::insert(&certificate_id, &user);
+
+			<CertificateRevocationStatusMap<T>>::insert(&certificate_id, false);
 
 			Self::deposit_event(Event::Issued(user, certificate_id));
 
@@ -57,15 +85,15 @@ pub mod pallet {
 			// A user can only take (delete) their own entry
 			let user = ensure_signed(origin)?;
 
-			// ensure!(
-			// 	<CertificateMap<T>>::contains_key(&certificate_id),
-			// 	Error::<T>::NoValueStored
-			// );
+			ensure!(
+				<CertificateIssuerMap<T>>::contains_key(&certificate_id) && <CertificateRevocationStatusMap<T>>::contains_key(&certificate_id),
+				Error::<T>::DoesNotExist
+			);
 
-			let owner = <CertificateMap<T>>::get(&certificate_id).ok_or(Error::<T>::NoOwner)?;
-			ensure!(user == owner, <Error<T>>::WrongOwner);
+			let owner = <CertificateIssuerMap<T>>::get(&certificate_id).ok_or(Error::<T>::NoOwner)?;
+			ensure!(user == owner, <Error<T>>::IncorrectOwner);
 
-			<CertificateMap<T>>::take(&certificate_id);
+			<CertificateRevocationStatusMap<T>>::insert(&certificate_id, true);
 			Self::deposit_event(Event::Revoked(user, certificate_id));
 			Ok(().into())
 		}
