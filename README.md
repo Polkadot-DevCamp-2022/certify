@@ -30,6 +30,30 @@ image source: https://arxiv.org/pdf/1912.06812.pdf
 
 ![UI](./ui.png)
 
+## Usage
+
+### Substrate Node
+
+```bash
+cd substrate-node-template
+cargo build --release
+./target/release/node-template --tmp --dev -lruntime::contracts=debug
+```
+
+### Org Contract
+
+```bash
+cd org_contract
+cargo +nightly contract build
+```
+
+### Frontend
+
+1. Use https://polkadot.js.org/apps/#/contracts to deploy contract
+2. Update `CONTRACT_ADDR` field in `certify-frontend/src/config/common.json` to new contract address
+3. `yarn install`
+4. `yarn start`
+
 ## Challenges
 
 - Ink and Substrate Node compatibility issues: 3.0.1 (v9.17) -> 3.1.0 -> 3.2.0 (v9.22)
