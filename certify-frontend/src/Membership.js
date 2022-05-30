@@ -4,10 +4,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Form, Input, Grid } from 'semantic-ui-react'
 
 import { useSubstrateState } from './substrate-lib'
-import { TxButton } from './substrate-lib/components'
 import { ContractPromise } from '@polkadot/api-contract'
 import { Button } from 'semantic-ui-react'
-import { blake2AsHex } from '@polkadot/util-crypto'
 import config from './config'
 
 function Main(props) {
@@ -16,9 +14,9 @@ function Main(props) {
   // The transaction submission status
   const [status, setStatus] = useState('')
 
-  const [fileHash, setFileHash] = useState('')
+  const [accountId, setAccountId] = useState('')
   const contractRef = useRef(null)
-  const [isMember, setMembership] = useState(false)
+  const [isOwner, setOwnership] = useState(false)
 
   useEffect(() => {
     if (!api) return
@@ -31,34 +29,25 @@ function Main(props) {
     console.log(currentAccount)
     if (!contractRef.current || !currentAccount) return
     ;(async () => {
-      const { result, output } = await contractRef.current.query.isMember(
+      const { result, output } = await contractRef.current.query.getOwner(
         currentAccount.address,
-        { value: 0, gasLimit: -1 },
-        currentAccount.address
+        { value: 0, gasLimit: -1 }
       )
 
       // check if the call was successful
       if (result.isOk) {
-        setMembership(output.toHuman())
+        setOwnership(output.toHuman() === currentAccount.address)
       } else {
-        setMembership(false)
+        setOwnership(false)
       }
     })()
   }, [currentAccount])
 
-  const handleFileChange = event => {
-    const fileReader = new FileReader()
-    fileReader.readAsArrayBuffer(event.target.files[0])
-    fileReader.onload = e => {
-      setFileHash(blake2AsHex(new Uint8Array(e.target.result)))
-    }
-  }
-
-  const handleIssue = () => {
+  const handleAdd = () => {
     setStatus('Current transaction status: Ready')
 
     contractRef.current.tx
-      .issue({ value: 0, gasLimit: -1 }, fileHash)
+      .addMember({ value: 0, gasLimit: -1 }, accountId)
       .signAndSend(currentAccount, result => {
         if (result.status.isInBlock) {
           setStatus('Current transaction status: In a Block')
@@ -68,11 +57,11 @@ function Main(props) {
       })
   }
 
-  const handleRevoke = () => {
+  const handleRemove = () => {
     setStatus('Current transaction status: Ready')
 
     contractRef.current.tx
-      .revoke({ value: 0, gasLimit: -1 }, fileHash)
+      .removeMember({ value: 0, gasLimit: -1 }, accountId)
       .signAndSend(currentAccount, result => {
         if (result.status.isInBlock) {
           setStatus('Current transaction status: In a Block')
@@ -80,29 +69,39 @@ function Main(props) {
           setStatus('Current transaction status: Finalized')
         }
       })
+  }
+
+  const handleCheck = () => {
+    if (!currentAccount || !accountId) return
+    ;(async () => {
+      const { result, output } = await contractRef.current.query.isMember(
+        currentAccount.address,
+        { value: 0, gasLimit: -1 },
+        accountId
+      )
+
+      // check if the call was successful
+      if (result.isOk) {
+        setStatus(`Membership: ${output.toHuman() ? 'Yes' : 'No'}`)
+      } else {
+        setStatus('Error', result.asErr)
+      }
+    })()
   }
 
   return (
     <Grid.Column width={8}>
-      <h1>Organization Contract</h1>
+      <h1>Organization Membership</h1>
       <p>{config.CONTRACT_ADDR}</p>
-      <p>Membership Status: {isMember ? 'True' : 'False'}</p>
+      <p>Ownership Status: {isOwner ? 'True' : 'False'}</p>
       <Form>
         <Form.Field>
           <Input
-            label="Certificate File"
-            type="file"
-            onChange={handleFileChange}
-          />
-        </Form.Field>
-        <Form.Field>
-          <Input
-            value={fileHash}
-            label="Certificate Hash"
-            placeholder="0x0000... 256 bits"
-            state="hashValue"
+            value={accountId}
+            label="Account Id"
+            placeholder="5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
             type="text"
-            onChange={(_, { value }) => setFileHash(value)}
+            onChange={(_, { value }) => setAccountId(value)}
           />
         </Form.Field>
         <Form.Field style={{ textAlign: 'center' }}>
@@ -110,19 +109,22 @@ function Main(props) {
             basic
             color={'red'}
             type="submit"
-            onClick={handleRevoke}
-            disabled={!isMember}
+            onClick={handleRemove}
+            disabled={!isOwner}
           >
-            Revoke
+            Remove Member
           </Button>
           <Button
             basic
             color={'blue'}
             type="submit"
-            onClick={handleIssue}
-            disabled={!isMember}
+            onClick={handleAdd}
+            disabled={!isOwner}
           >
-            Issue
+            Add Member
+          </Button>
+          <Button basic color={'green'} type="submit" onClick={handleCheck}>
+            Is Member
           </Button>
         </Form.Field>
         <div style={{ overflowWrap: 'break-word' }}>{status}</div>
@@ -131,7 +133,7 @@ function Main(props) {
   )
 }
 
-export default function Contract(props) {
+export default function Membership(props) {
   const { api } = useSubstrateState()
   return api.tx.certify ? <Main {...props} /> : null
 }
