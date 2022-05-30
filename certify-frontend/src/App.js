@@ -25,6 +25,7 @@ import Issue from './Issue'
 // import Upgrade from './Upgrade'
 import Contract from './Contract'
 import Verify from './Verify'
+import Membership from './Membership'
 
 function Main() {
   const { apiState, apiError, keyringState } = useSubstrateState()
@@ -93,6 +94,7 @@ function Main() {
           </Grid.Row>
           <Grid.Row>
             <Contract />
+            <Membership />
           </Grid.Row>
           <Grid.Row>
             <Events />
