@@ -20,6 +20,9 @@ pub trait CertifyExtension {
 pub enum ContractError {
     UnknownStatusCode,
     InvalidScaleEncoding,
+    NoPermission,
+    NotAMember,
+    AlreadyAMember,
 }
 
 impl From<scale::Error> for ContractError {
@@ -58,9 +61,20 @@ impl Environment for CustomEnvironment {
 mod org_contract {
     use super::ContractError;
 
+    use ink_lang::utils::initialize_contract;
+    use ink_storage::{
+            traits::{
+                SpreadAllocate,
+            },
+            Mapping,
+        };
+
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct OrgContract {
         name: Hash,
+        owner: AccountId,
+        members: Mapping<AccountId, bool>
     }
 
     #[ink(event)]
@@ -85,15 +99,29 @@ mod org_contract {
         name: Hash,
     }
 
+    #[ink(event)]
+    pub struct AddMember {
+        #[ink(topic)]
+        account_id:AccountId
+    }
+
+    #[ink(event)]
+    pub struct RemoveMember {
+        #[ink(topic)]
+        account_id:AccountId
+    }
+
+
     impl OrgContract {
         #[ink(constructor)]
         pub fn new(name: Hash) -> Self {
-            Self { name: name }
-        }
 
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
+            initialize_contract(|contract: &mut Self| {
+                let caller = Self::env().caller();
+                contract.name = name;
+                contract.owner = caller;
+                contract.members.insert(&caller, &true)
+            })
         }
 
         #[ink(message)]
@@ -109,9 +137,58 @@ mod org_contract {
             Ok(())
         }
 
+        #[ink(message)]
+        pub fn get_owner(&self) -> AccountId {
+            self.owner
+        }
+
+        #[ink(message)]
+        pub fn is_member(&self, account_id: AccountId) -> bool {
+            self.members.get(&account_id).unwrap_or_default()
+        }
+
+        #[ink(message)]
+        pub fn add_member(& mut self, account_id: AccountId) -> Result<(), ContractError> {
+            let caller = self.env().caller();
+            let owner = self.owner;
+            if caller != owner {
+                return Err(ContractError::NoPermission)
+            }
+            if self.members.contains(&account_id) {
+                return Err(ContractError::AlreadyAMember)
+            }
+            
+            self.members.insert(&account_id, &true);
+            self.env().emit_event(AddMember { account_id});
+
+            Ok(())
+        }
+
+
+        #[ink(message)]
+        pub fn remove_member(& mut self, account_id: AccountId) -> Result<(), ContractError> {
+            let caller = self.env().caller();
+            let owner = self.owner;
+            if caller != owner {
+                return Err(ContractError::NoPermission)
+            }
+            if !self.members.contains(&account_id) {
+                return Err(ContractError::NotAMember)
+            }
+            
+            self.members.remove(&account_id);
+            self.env().emit_event(RemoveMember { account_id});
+
+            Ok(())
+        }
+
 		#[ink(message)]
 		pub fn issue(&mut self, value: Hash) -> Result<(), ContractError> {
             let caller = self.env().caller();
+
+            if !self.members.get(&caller).unwrap_or_default() {
+                return Err(ContractError::NoPermission)
+            }
 
 			self.env().extension().issue_in_runtime(value)?;
             self.env().emit_event(IssuedByContract { value: value, account_id: caller });
@@ -122,6 +199,10 @@ mod org_contract {
         #[ink(message)]
 		pub fn revoke(&mut self, value: Hash) -> Result<(), ContractError> {
             let caller = self.env().caller();
+
+          if !self.members.get(&caller).unwrap_or_default() {
+                return Err(ContractError::NoPermission)
+            }
 
 			self.env().extension().revoke_in_runtime(value)?;
             self.env().emit_event(RevokedByContract { value: value, account_id: caller });
